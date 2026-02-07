@@ -81,9 +81,9 @@ The BLE transport uses the following service/characteristics:
 
 ## Configuration
 ### Server Metadata
-The server name, version, and instructions are configured when creating `MCPServer` in the example:
+The server name, version, and instructions are configured when creating `BLEMCPServer` in the example:
 ```cpp
-MCPServer mcpServer("ESP32-MCP-BLE", "1.0.0", "MCP WiFi configuration tool");
+BLEMCPServer mcpServer("ESP32-MCP-BLE", "1.0.0", "MCP WiFi configuration tool");
 ```
 
 ### WiFi Provisioning
@@ -101,8 +101,8 @@ mcpServer.begin();
 .
 ├── examples/
 │   └── config_wifi/        # WiFi provisioning demo using MCP tools
-├── include/                # Public headers (MCPServer, McpBle, transport API)
-├── src/                    # Core implementation (MCPServer, BLE, transport)
+├── include/                # Public headers (BLEMCPServer, McpBle, transport API)
+├── src/                    # Core implementation (BLEMCPServer, BLE, transport)
 ├── library.json            # PlatformIO library manifest
 ```
 

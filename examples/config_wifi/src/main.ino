@@ -2,7 +2,7 @@
 #include <WiFi.h>
 #include <MCPServer.h>
 
-MCPServer mcpServer("ESP32-MCP-BLE", "1.0.0", "MCP WiFi configuration tool");
+BLEMCPServer mcpServer("ESP32-MCP-BLE", "1.0.0", "MCP WiFi configuration tool");
 
 class ConfigWifiHandler : public ToolHandler {
    public:
