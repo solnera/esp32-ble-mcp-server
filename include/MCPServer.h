@@ -174,10 +174,10 @@ class Tool {
     String toString() const;
 };
 
-class MCPServer {
+class BLEMCPServer {
    public:
-    MCPServer(const String& name = DEFAULT_SERVER_NAME, const String& version = DEFAULT_SERVER_VERSION,
-              const String& instructions = "");
+    BLEMCPServer(const String& name = DEFAULT_SERVER_NAME, const String& version = DEFAULT_SERVER_VERSION,
+                 const String& instructions = "");
     
     void RegisterTool(const Tool& tool);
     void begin();
@@ -209,7 +209,7 @@ class MCPServer {
     QueueHandle_t rx_queue = nullptr;
     TaskHandle_t task_handle = nullptr;
 
-    static MCPServer* s_bound;
+    static BLEMCPServer* s_bound;
     static bool s_initialized;
 
    private:

@@ -7,8 +7,8 @@
 
 #define TAG "MCP_SERVER"
 
-MCPServer* MCPServer::s_bound = nullptr;
-bool MCPServer::s_initialized = false;
+BLEMCPServer* BLEMCPServer::s_bound = nullptr;
+bool BLEMCPServer::s_initialized = false;
 
 String Properties::toString() const {
     DynamicJsonDocument doc(4096);
@@ -116,11 +116,11 @@ String Tool::toString() const {
     return result;
 }
 
-MCPServer::MCPServer(const String& name, const String& version, const String& instructions)
+BLEMCPServer::BLEMCPServer(const String& name, const String& version, const String& instructions)
     : serverName(name), serverVersion(version), serverInstructions(instructions) {
 }
 
-void MCPServer::begin() {
+void BLEMCPServer::begin() {
     if (s_bound && s_bound != this) {
         Serial.println("MCP Server already bound");
         return;
@@ -131,15 +131,15 @@ void MCPServer::begin() {
         rx_queue = xQueueCreate(4, sizeof(char*));
     }
     if (!task_handle) {
-        xTaskCreate(MCPServer::taskEntry, "mcp_ble_rx", 4096, this, 1, &task_handle);
+        xTaskCreate(BLEMCPServer::taskEntry, "mcp_ble_rx", 4096, this, 1, &task_handle);
     }
 
-    mcp_transport_set_sleep_fn(MCPServer::sleepTicks, NULL);
+    mcp_transport_set_sleep_fn(BLEMCPServer::sleepTicks, NULL);
 
     if (!s_initialized) {
         mcp_transport_init();
-        mcp_transport_set_send_fn(MCPServer::sendBytes, NULL);
-        mcp_transport_set_message_cb(MCPServer::onMessage, this);
+        mcp_transport_set_send_fn(BLEMCPServer::sendBytes, NULL);
+        mcp_transport_set_message_cb(BLEMCPServer::onMessage, this);
         mcp_transport_set_tx_gap_ticks(1);
         mcp_transport_set_send_retry(3, 1);
 
@@ -148,7 +148,7 @@ void MCPServer::begin() {
             mcp_transport_receive(data, len);
         });
         
-        McpBle::getInstance().setMtuCallback(MCPServer::onMtu);
+        McpBle::getInstance().setMtuCallback(BLEMCPServer::onMtu);
         mcp_transport_set_mtu(McpBle::getInstance().getMtu());
         
         McpBle::getInstance().init();
@@ -158,11 +158,11 @@ void MCPServer::begin() {
 
         s_initialized = true;
     } else {
-        mcp_transport_set_message_cb(MCPServer::onMessage, this);
+        mcp_transport_set_message_cb(BLEMCPServer::onMessage, this);
     }
 }
 
-void MCPServer::loop() {
+void BLEMCPServer::loop() {
     if (!rx_queue) return;
     while (true) {
         char* msg = nullptr;
@@ -174,8 +174,8 @@ void MCPServer::loop() {
     }
 }
 
-void MCPServer::taskEntry(void* ctx) {
-    auto* self = static_cast<MCPServer*>(ctx);
+void BLEMCPServer::taskEntry(void* ctx) {
+    auto* self = static_cast<BLEMCPServer*>(ctx);
     for (;;) {
         if (!self || !self->rx_queue) {
             vTaskDelay(10 / portTICK_PERIOD_MS);
@@ -189,9 +189,9 @@ void MCPServer::taskEntry(void* ctx) {
     }
 }
 
-void MCPServer::onMessage(const char* message, void* ctx) {
+void BLEMCPServer::onMessage(const char* message, void* ctx) {
     if (!ctx) return;
-    auto* self = static_cast<MCPServer*>(ctx);
+    auto* self = static_cast<BLEMCPServer*>(ctx);
     if (!self->rx_queue || !message) return;
     size_t n = strlen(message);
     char* copy = (char*)malloc(n + 1);
@@ -203,32 +203,32 @@ void MCPServer::onMessage(const char* message, void* ctx) {
     }
 }
 
-int MCPServer::sendBytes(const uint8_t* data, size_t len, void* ctx) {
+int BLEMCPServer::sendBytes(const uint8_t* data, size_t len, void* ctx) {
     (void)ctx;
     return McpBle::getInstance().sendNotification(data, len) ? 0 : -1;
 }
 
-void MCPServer::onMtu(uint16_t mtu) {
+void BLEMCPServer::onMtu(uint16_t mtu) {
     mcp_transport_set_mtu(mtu);
 }
 
-void MCPServer::sleepTicks(uint32_t ticks, void* ctx) {
+void BLEMCPServer::sleepTicks(uint32_t ticks, void* ctx) {
     (void)ctx;
     if (ticks > 0) delay(ticks * portTICK_PERIOD_MS);
 }
 
-void MCPServer::logFn(int level, const char* tag, const char* message, void* ctx) {
+void BLEMCPServer::logFn(int level, const char* tag, const char* message, void* ctx) {
     (void)ctx;
     if (!tag || !message) return;
     Serial.printf("[%s] %s\n", tag, message);
 }
 
-void MCPServer::RegisterTool(const Tool& tool) {
+void BLEMCPServer::RegisterTool(const Tool& tool) {
     tools[tool.name] = tool;
     Serial.printf("Tool registered: %s\n", tool.name.c_str());
 }
 
-MCPRequest MCPServer::parseRequest(const std::string& json) {
+MCPRequest BLEMCPServer::parseRequest(const std::string& json) {
     DynamicJsonDocument doc(8192);
     DeserializationError error = deserializeJson(doc, json);
 
@@ -245,7 +245,7 @@ MCPRequest MCPServer::parseRequest(const std::string& json) {
     return request;
 }
 
-std::string MCPServer::serializeResponse(const MCPResponse& response) {
+std::string BLEMCPServer::serializeResponse(const MCPResponse& response) {
     DynamicJsonDocument doc(8192);
     JsonVariantConst idVariant = response.id();
     if (idVariant.is<const char*>() || idVariant.is<String>()) {
@@ -271,19 +271,19 @@ std::string MCPServer::serializeResponse(const MCPResponse& response) {
     return jsonResponse;
 }
 
-void MCPServer::sendResponse(const std::string& jsonResponse, int httpStatusCode) {
+void BLEMCPServer::sendResponse(const std::string& jsonResponse, int httpStatusCode) {
     (void)httpStatusCode; // Not used in BLE
     mcp_transport_send_message(jsonResponse.c_str());
 }
 
-void MCPServer::processMessage(const char* message) {
+void BLEMCPServer::processMessage(const char* message) {
     MCPRequest request = parseRequest(message);
     MCPResponse response = handle(request);
     std::string jsonResponse = serializeResponse(response);
     sendResponse(jsonResponse, response.httpStatusCode);
 }
 
-MCPResponse MCPServer::handle(MCPRequest& request) {
+MCPResponse BLEMCPServer::handle(MCPRequest& request) {
     if (request.method.empty()) {
         return createJSONRPCError(static_cast<int>(ErrorCode::PARSE_ERROR), request.id(), "Parse error: Invalid JSON");
     }
@@ -301,7 +301,7 @@ MCPResponse MCPServer::handle(MCPRequest& request) {
     }
 }
 
-MCPResponse MCPServer::handleInitialize(MCPRequest& request) {
+MCPResponse BLEMCPServer::handleInitialize(MCPRequest& request) {
     MCPResponse response(request.id());
     JsonObject result = response.resultDoc.to<JsonObject>();
 
@@ -323,7 +323,7 @@ MCPResponse MCPServer::handleInitialize(MCPRequest& request) {
     return response;
 }
 
-MCPResponse MCPServer::handleInitialized(MCPRequest& request) {
+MCPResponse BLEMCPServer::handleInitialized(MCPRequest& request) {
     ESP_LOGI(TAG, "Client initialized");
     MCPResponse response(request.id());
     response.resultDoc.to<JsonObject>();
@@ -331,7 +331,7 @@ MCPResponse MCPServer::handleInitialized(MCPRequest& request) {
     return response;
 }
 
-MCPResponse MCPServer::handleToolsList(MCPRequest& request) {
+MCPResponse BLEMCPServer::handleToolsList(MCPRequest& request) {
     MCPResponse response(request.id());
     JsonObject result = response.resultDoc.to<JsonObject>();
     JsonArray toolsArray = result["tools"].to<JsonArray>();
@@ -354,7 +354,7 @@ MCPResponse MCPServer::handleToolsList(MCPRequest& request) {
     return response;
 }
 
-MCPResponse MCPServer::handleFunctionCalls(MCPRequest& request) {
+MCPResponse BLEMCPServer::handleFunctionCalls(MCPRequest& request) {
     MCPResponse mcpResponse(request.id());
     JsonVariantConst params = request.params();
 
@@ -395,7 +395,7 @@ MCPResponse MCPServer::handleFunctionCalls(MCPRequest& request) {
     return mcpResponse;
 }
 
-MCPResponse MCPServer::createJSONRPCError(int code, const JsonVariantConst& id, const std::string& message) {
+MCPResponse BLEMCPServer::createJSONRPCError(int code, const JsonVariantConst& id, const std::string& message) {
     MCPResponse response(id);
 
     response.errorDoc["code"] = code;
